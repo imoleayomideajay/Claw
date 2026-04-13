@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from importlib.util import find_spec
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -10,6 +9,7 @@ import pandas as pd
 import streamlit as st
 
 from src.baseline import fit_chamberlain_baseline
+from src.bayesian_model import fit_bayesian_fairness_model
 from src.fairness_metrics import dataset_summary, marginal_and_intersection_metrics
 from src.frequentist_model import fit_frequentist_fairness_model
 from src.ias import compute_bayesian_ias_interval, compute_ias
@@ -17,8 +17,6 @@ from src.inclusion_exclusion import compute_union_metrics_pie
 from src.simulate_data import build_audit_outcome, simulate_algorithm, simulate_ground_truth, simulate_population
 from src.utils import SCENARIO_ORDER
 
-
-HAS_BAYES_STACK = find_spec("pymc") is not None and find_spec("arviz") is not None
 
 st.set_page_config(page_title="AI Fairness Audit Lab", layout="wide")
 
@@ -65,9 +63,6 @@ def main() -> None:
     st.title("Extending Chamberlain’s Law for AI Fairness")
     st.caption("Interactive simulation + fairness auditing dashboard")
 
-    if not HAS_BAYES_STACK:
-        st.warning("PyMC/ArviZ not detected. Bayesian section is disabled; frequentist auditing still works.")
-
     with st.sidebar:
         st.header("Simulation controls")
         scenario = st.selectbox("Scenario", SCENARIO_ORDER, index=0)
@@ -75,36 +70,16 @@ def main() -> None:
         n = st.slider("Population size", min_value=1000, max_value=20000, value=7000, step=500)
         seed = st.number_input("Random seed", min_value=1, value=2026, step=1)
         threshold = st.slider("Decision threshold", min_value=0.30, max_value=0.80, value=0.52, step=0.01)
-        run_bayes = st.checkbox(
-            "Run Bayesian model",
-            value=False,
-            disabled=not HAS_BAYES_STACK,
-            help="Can take longer for large n.",
-        )
-        run = st.button("Run audit", type="primary")
-
-    if run:
-        st.session_state.last_run = (scenario, audit, int(n), int(seed), float(threshold), run_bayes)
-
-    if "last_run" not in st.session_state:
-        st.info("Configure parameters in the sidebar, then click **Run audit**.")
-        return
-
-    scenario, audit, n, seed, threshold, run_bayes = st.session_state.last_run
+        run_bayes = st.checkbox("Run Bayesian model", value=False, help="Can take longer for large n.")
 
     with st.spinner("Running simulation and fairness audit..."):
-        try:
-            df, summary, marginal, intersection, union, ias, freq = run_interactive_pipeline(
-                scenario=scenario,
-                audit_outcome=audit,
-                n=int(n),
-                seed=int(seed),
-                threshold=float(threshold),
-            )
-        except Exception as exc:
-            st.error("Pipeline failed. Try a different outcome/scenario or smaller N.")
-            st.exception(exc)
-            return
+        df, summary, marginal, intersection, union, ias, freq = run_interactive_pipeline(
+            scenario=scenario,
+            audit_outcome=audit,
+            n=int(n),
+            seed=int(seed),
+            threshold=float(threshold),
+        )
 
     c1, c2, c3 = st.columns(3)
     c1.metric("N", f"{int(summary.loc[0, 'n']):,}")
@@ -137,26 +112,19 @@ def main() -> None:
 
     st.pyplot(make_gap_plot(union, "union", "fairness_gap", "Union fairness gaps"), clear_figure=True)
 
-    if run_bayes and HAS_BAYES_STACK:
+    if run_bayes:
         st.subheader("Bayesian fairness model")
         with st.spinner("Sampling posterior..."):
-            try:
-                from src.bayesian_model import fit_bayesian_fairness_model
-                import arviz as az
-
-                z_col = f"Z_{audit}"
-                idata, bayes_summary, sampling_method = fit_bayesian_fairness_model(df, z_col=z_col, draws=500, tune=500)
-                bayes_ias = compute_bayesian_ias_interval(df, bayes_summary)
-            except Exception as exc:
-                st.error("Bayesian model failed for this configuration.")
-                st.exception(exc)
-                return
+            z_col = f"Z_{audit}"
+            idata, bayes_summary, sampling_method = fit_bayesian_fairness_model(df, z_col=z_col, draws=500, tune=500)
+            bayes_ias = compute_bayesian_ias_interval(df, bayes_summary)
         st.write(f"Sampling method: `{sampling_method}`")
         st.dataframe(bayes_summary, use_container_width=True)
         st.json(bayes_ias)
 
         fig_path = Path("results/figures") / f"streamlit_{scenario}_{audit}_posterior.png"
         fig_path.parent.mkdir(parents=True, exist_ok=True)
+        import arviz as az
 
         az.plot_forest(idata, var_names=["intercept", "beta"], combined=True, hdi_prob=0.95)
         plt.title("Bayesian posterior forest plot")
