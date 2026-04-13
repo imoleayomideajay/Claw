@@ -28,6 +28,7 @@ This repository provides a complete, reproducible Python research pipeline for a
 - `results/figures/`: saved figures
 - `results/tables/`: saved CSV tables
 - `main.py`: end-to-end entrypoint
+- `app.py`: Streamlit interactive dashboard
 - `requirements.txt`: Python dependencies
 
 ## Installation
@@ -42,6 +43,13 @@ pip install -r requirements.txt
 
 ```bash
 python main.py
+```
+
+
+Or launch the interactive dashboard:
+
+```bash
+streamlit run app.py
 ```
 
 ## Outputs
