@@ -9,6 +9,7 @@ import pandas as pd
 import streamlit as st
 
 from src.baseline import fit_chamberlain_baseline
+from src.bayesian_model import fit_bayesian_fairness_model
 from src.fairness_metrics import dataset_summary, marginal_and_intersection_metrics
 from src.frequentist_model import fit_frequentist_fairness_model
 from src.ias import compute_bayesian_ias_interval, compute_ias
@@ -70,30 +71,15 @@ def main() -> None:
         seed = st.number_input("Random seed", min_value=1, value=2026, step=1)
         threshold = st.slider("Decision threshold", min_value=0.30, max_value=0.80, value=0.52, step=0.01)
         run_bayes = st.checkbox("Run Bayesian model", value=False, help="Can take longer for large n.")
-        run = st.button("Run audit", type="primary")
-
-    if run:
-        st.session_state.last_run = (scenario, audit, int(n), int(seed), float(threshold), run_bayes)
-
-    if "last_run" not in st.session_state:
-        st.info("Configure parameters in the sidebar, then click **Run audit**.")
-        return
-
-    scenario, audit, n, seed, threshold, run_bayes = st.session_state.last_run
 
     with st.spinner("Running simulation and fairness audit..."):
-        try:
-            df, summary, marginal, intersection, union, ias, freq = run_interactive_pipeline(
-                scenario=scenario,
-                audit_outcome=audit,
-                n=int(n),
-                seed=int(seed),
-                threshold=float(threshold),
-            )
-        except Exception as exc:
-            st.error("Pipeline failed. Try a different outcome/scenario or smaller N.")
-            st.exception(exc)
-            return
+        df, summary, marginal, intersection, union, ias, freq = run_interactive_pipeline(
+            scenario=scenario,
+            audit_outcome=audit,
+            n=int(n),
+            seed=int(seed),
+            threshold=float(threshold),
+        )
 
     c1, c2, c3 = st.columns(3)
     c1.metric("N", f"{int(summary.loc[0, 'n']):,}")
@@ -129,16 +115,9 @@ def main() -> None:
     if run_bayes:
         st.subheader("Bayesian fairness model")
         with st.spinner("Sampling posterior..."):
-            try:
-                from src.bayesian_model import fit_bayesian_fairness_model
-
-                z_col = f"Z_{audit}"
-                idata, bayes_summary, sampling_method = fit_bayesian_fairness_model(df, z_col=z_col, draws=500, tune=500)
-                bayes_ias = compute_bayesian_ias_interval(df, bayes_summary)
-            except Exception as exc:
-                st.error("Bayesian model failed for this configuration.")
-                st.exception(exc)
-                return
+            z_col = f"Z_{audit}"
+            idata, bayes_summary, sampling_method = fit_bayesian_fairness_model(df, z_col=z_col, draws=500, tune=500)
+            bayes_ias = compute_bayesian_ias_interval(df, bayes_summary)
         st.write(f"Sampling method: `{sampling_method}`")
         st.dataframe(bayes_summary, use_container_width=True)
         st.json(bayes_ias)
