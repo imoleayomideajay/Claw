@@ -1,43 +1,69 @@
-"""Inequality Attribution Score computations."""
+"""Inclusion-exclusion based auditing for unions of protected groups."""
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
 
-MERIT_COLS = ["education", "experience", "performance_score", "income_risk_score"]
-IDENTITY_COLS = ["gender", "race", "disability", "gender_race", "gender_disability", "race_disability"]
+def _ie_count_from_sets(df: pd.DataFrame, sets: list[pd.Series], value_col: str) -> float:
+    """Compute union total via inclusion-exclusion on value column."""
+    if len(sets) == 2:
+        a, b = sets
+        return float(df.loc[a, value_col].sum() + df.loc[b, value_col].sum() - df.loc[a & b, value_col].sum())
+    if len(sets) == 3:
+        a, b, c = sets
+        return float(
+            df.loc[a, value_col].sum()
+            + df.loc[b, value_col].sum()
+            + df.loc[c, value_col].sum()
+            - df.loc[a & b, value_col].sum()
+            - df.loc[a & c, value_col].sum()
+            - df.loc[b & c, value_col].sum()
+            + df.loc[a & b & c, value_col].sum()
+        )
+    raise ValueError("Only 2-way and 3-way unions are supported")
 
 
-def compute_ias(df: pd.DataFrame, coef_map: dict[str, float]) -> dict[str, float]:
-    """Compute IAS from linear predictor decomposition using provided coefficients."""
-    x = df.copy()
-    x["gender_race"] = x["gender"] * x["race"]
-    x["gender_disability"] = x["gender"] * x["disability"]
-    x["race_disability"] = x["race"] * x["disability"]
+def compute_union_metrics_pie(df: pd.DataFrame, z_col: str) -> pd.DataFrame:
+    """Compute fairness metrics for unions using inclusion-exclusion to avoid double counting."""
+    groups = {
+        "A:gender=1": df["gender"] == 1,
+        "B:race=1": df["race"] == 1,
+        "C:disability=1": df["disability"] == 1,
+    }
 
-    merit_comp = np.zeros(len(x))
-    identity_comp = np.zeros(len(x))
+    union_defs = {
+        "A∪B": [groups["A:gender=1"], groups["B:race=1"]],
+        "A∪C": [groups["A:gender=1"], groups["C:disability=1"]],
+        "B∪C": [groups["B:race=1"], groups["C:disability=1"]],
+        "A∪B∪C": [groups["A:gender=1"], groups["B:race=1"], groups["C:disability=1"]],
+    }
 
-    for c in MERIT_COLS:
-        merit_comp += coef_map.get(c, 0.0) * x[c].values
-    for c in IDENTITY_COLS:
-        identity_comp += coef_map.get(c, 0.0) * x[c].values
+    rows = []
+    n = len(df)
+    for union_name, masks in union_defs.items():
+        union_mask = masks[0].copy()
+        for m in masks[1:]:
+            union_mask = union_mask | m
 
-    v_merit = float(np.var(merit_comp))
-    v_identity = float(np.var(identity_comp))
-    ias = v_identity / (v_identity + v_merit + 1e-12)
-    return {"IAS": ias, "var_identity": v_identity, "var_merit": v_merit}
+        prevalence = float(union_mask.mean())
+        obs = _ie_count_from_sets(df, masks, z_col)
+        exp = _ie_count_from_sets(df, masks, "pi0")
+        gap = obs - exp
+        p_union = float(df.loc[union_mask, z_col].mean())
+        p_comp = float(df.loc[~union_mask, z_col].mean())
 
+        rows.append(
+            {
+                "union": union_name,
+                "prevalence": prevalence,
+                "n_union": int(union_mask.sum()),
+                "n_complement": int(n - union_mask.sum()),
+                "observed_count": obs,
+                "expected_count": exp,
+                "fairness_gap": gap,
+                "union_minus_complement_rate": p_union - p_comp,
+            }
+        )
 
-def compute_bayesian_ias_interval(df: pd.DataFrame, posterior_summary: pd.DataFrame) -> dict[str, float]:
-    """Approximate IAS interval from posterior mean and 95% HDI bounds."""
-    term_to_mean = dict(zip(posterior_summary["term"], posterior_summary["mean"]))
-    term_to_low = dict(zip(posterior_summary["term"], posterior_summary["hdi_2.5%"], strict=False))
-    term_to_high = dict(zip(posterior_summary["term"], posterior_summary["hdi_97.5%"], strict=False))
-
-    point = compute_ias(df, term_to_mean)["IAS"]
-    low = compute_ias(df, term_to_low)["IAS"]
-    high = compute_ias(df, term_to_high)["IAS"]
-    return {"ias_point": point, "ias_hdi_low": min(low, high), "ias_hdi_high": max(low, high)}
+    return pd.DataFrame(rows)
