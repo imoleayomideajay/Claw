@@ -7,3 +7,4 @@ scikit-learn>=1.4
 pymc>=5.10
 arviz>=0.17
 streamlit>=1.37
+

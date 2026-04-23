@@ -39,3 +39,4 @@ def dataset_summary(df: pd.DataFrame) -> pd.DataFrame:
         "disability_share": df["disability"].mean(),
     }
     return pd.DataFrame([summary])
+
