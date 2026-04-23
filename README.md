@@ -77,3 +77,5 @@ After running `python main.py`, you will get:
 - Deterministic seeds are used throughout.
 - All scenario runs are orchestrated in `src/pipeline.py`.
 - Bayesian model uses NUTS by default and falls back to ADVI if sampling fails.
+
+  
