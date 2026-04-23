@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+title: "Extending Chamberlain’s Law for AI Fairness: Simulation and Auditing Pipeline"
+message: "If you use this software, please cite it using the metadata from this file."
+type: software
+authors:
+  - family-names: "Ajayi"
+    given-names: "Imoleayomide"
+repository-code: "https://github.com/imoleayomideajay/Claw"
+url: "https://github.com/imoleayomideajay/Claw"
+abstract: >-
+  Reproducible research software for auditing structural disparities in algorithmic
+  decision-making by extending Chamberlain-style expected-outcome baselines with
+  frequentist and Bayesian fairness modeling, inclusion–exclusion subgroup/union
+  analysis, and an Inequality Attribution Score (IAS).
+keywords:
+  - AI fairness
+  - algorithmic auditing
+  - chamberlain law
+  - simulation
+  - bayesian modeling
+  - intersectionality
+license: MIT
+version: "0.1.0"
+date-released: "YYYY-MM-DD"
+preferred-citation:
+  type: article
+  title: "Extending Chamberlain’s Law for AI Fairness: A Probabilistic Framework for Quantifying Structural Disparities in Algorithmic Decision-Making"
+  authors:
+    - family-names: "Ajayi"
+      given-names: "Imoleayomide"
+  year: 2026
+  journal: "[Placeholder Journal / Preprint Server]"
+  doi: "10.0000/placeholder-doi"
