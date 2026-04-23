@@ -52,7 +52,7 @@ def fit_bayesian_fairness_model(
     x_std = np.where(X.std(axis=0) == 0, 1.0, X.std(axis=0))
     Xs = (X - x_mean) / x_std
 
-    with pm.Model():
+    with pm.Model() as model:
         intercept = pm.Normal("intercept", mu=0.0, sigma=2.0)
         beta = pm.Normal("beta", mu=0.0, sigma=1.0, shape=Xs.shape[1])
         logits = intercept + pm.math.dot(Xs, beta)
