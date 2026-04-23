@@ -6,21 +6,25 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
-from statsmodels.tools.sm_exceptions import PerfectSeparationError
 
 
-def _safe_exp(values: np.ndarray) -> np.ndarray:
-    """Exponentiate values with clipping to avoid overflow warnings."""
-    return np.exp(np.clip(values, -700, 700))
+FORMULA_SUFFIX = (
+    "education + experience + performance_score + income_risk_score + "
+    "gender + race + disability + gender:race + gender:disability + race:disability"
+)
 
 
-def _summary_table_from_result(result: object, fit_method: str) -> pd.DataFrame:
-    """Construct a tidy coefficient summary for model outputs."""
+def _build_summary_table(result: object, backend: str) -> pd.DataFrame:
+    """Create a standard coefficient summary table from a statsmodels result."""
     params = result.params
+
     try:
         conf = result.conf_int()
+        ci_low = np.exp(conf[0].values)
+        ci_high = np.exp(conf[1].values)
     except Exception:
-        conf = pd.DataFrame(index=params.index, data={0: np.nan, 1: np.nan})
+        ci_low = np.full(len(params), np.nan)
+        ci_high = np.full(len(params), np.nan)
 
     try:
         pvals = result.pvalues
@@ -31,35 +35,36 @@ def _summary_table_from_result(result: object, fit_method: str) -> pd.DataFrame:
         {
             "term": params.index,
             "coef": params.values,
-            "odds_ratio": _safe_exp(params.values),
-            "ci_low": _safe_exp(conf[0].values),
-            "ci_high": _safe_exp(conf[1].values),
+            "odds_ratio": np.exp(params.values),
+            "ci_low": ci_low,
+            "ci_high": ci_high,
             "p_value": pvals.values,
-            "fit_method": fit_method,
+            "model_backend": backend,
         }
     )
     table["significant_0_05"] = table["p_value"] < 0.05
-    return table.sort_values(["p_value", "term"], na_position="last").reset_index(drop=True)
+    return table.sort_values(["p_value", "term"], na_position="last")
 
 
 def fit_frequentist_fairness_model(df: pd.DataFrame, z_col: str) -> tuple[object, pd.DataFrame]:
-    """Fit multivariable logistic regression with protected interactions and return tidy summary."""
-    formula = (
-        f"{z_col} ~ education + experience + performance_score + income_risk_score + "
-        "gender + race + disability + gender:race + gender:disability + race:disability"
-    )
+    """Fit fairness regression with robust multi-stage fallbacks for singular designs."""
+    formula = f"{z_col} ~ {FORMULA_SUFFIX}"
+
+    # 1) Preferred: MLE logit.
     try:
         result = smf.logit(formula=formula, data=df).fit(disp=0, maxiter=200)
-        return result, _summary_table_from_result(result, fit_method="logit_mle")
-    except (np.linalg.LinAlgError, PerfectSeparationError):
-        try:
-            result = smf.glm(formula=formula, data=df, family=sm.families.Binomial()).fit(maxiter=200)
-            return result, _summary_table_from_result(result, fit_method="glm_binomial_fallback")
-        except Exception:
-            result = smf.logit(formula=formula, data=df).fit_regularized(
-                alpha=1e-4,
-                L1_wt=0.0,
-                maxiter=500,
-                disp=0,
-            )
-            return result, _summary_table_from_result(result, fit_method="logit_ridge_fallback")
+        return result, _build_summary_table(result, backend="logit_mle")
+    except Exception:
+        pass
+
+    # 2) Fallback: GLM binomial.
+    try:
+        result = smf.glm(formula=formula, data=df, family=sm.families.Binomial()).fit(maxiter=200)
+        return result, _build_summary_table(result, backend="glm_binomial")
+    except Exception:
+        pass
+
+    # 3) Final fallback: regularized logit (handles singular Hessians).
+    model = smf.logit(formula=formula, data=df)
+    result = model.fit_regularized(alpha=1e-4, maxiter=500, disp=0)
+    return result, _build_summary_table(result, backend="logit_regularized")
