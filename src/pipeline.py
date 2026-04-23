@@ -139,8 +139,6 @@ def run_all_scenarios(
     table_dir = base_dir / "results" / "tables"
     ensure_directories([data_dir, figure_dir, table_dir])
 
-    config = SimulationConfig(n=n, seed=seed)
-
     ias_rows = []
     for i, scenario in enumerate(SCENARIO_ORDER):
         scenario_seeded = SimulationConfig(n=n, seed=seed + 100 * i)
