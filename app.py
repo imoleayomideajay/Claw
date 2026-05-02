@@ -106,28 +106,34 @@ def main() -> None:
             st.exception(exc)
             return
 
+    def round_df(df: pd.DataFrame, decimals: int = 2) -> pd.DataFrame:
+        return df.round(decimals)
+
+    def round_dict(d: dict, decimals: int = 2) -> dict:
+        return {k: round(float(v), decimals) for k, v in d.items()}
+
     c1, c2, c3 = st.columns(3)
     c1.metric("N", f"{int(summary.loc[0, 'n']):,}")
-    c2.metric("Y rate", f"{summary.loc[0, 'y_rate']:.3f}")
-    c3.metric("Y-hat rate", f"{summary.loc[0, 'y_hat_rate']:.3f}")
+    c2.metric("Y rate", f"{summary.loc[0, 'y_rate']:.2f}")
+    c3.metric("Y-hat rate", f"{summary.loc[0, 'y_hat_rate']:.2f}")
 
     st.subheader("Population summary")
-    st.dataframe(summary, use_container_width=True)
+    st.dataframe(round_df(summary), use_container_width=True)
 
     st.subheader("Marginal fairness metrics")
-    st.dataframe(marginal, use_container_width=True)
+    st.dataframe(round_df(marginal), use_container_width=True)
 
     st.subheader("Intersectional fairness metrics")
-    st.dataframe(intersection, use_container_width=True)
+    st.dataframe(round_df(intersection), use_container_width=True)
 
     st.subheader("Union-level metrics (inclusion–exclusion)")
-    st.dataframe(union, use_container_width=True)
+    st.dataframe(round_df(union), use_container_width=True)
 
     st.subheader("Frequentist fairness model")
-    st.dataframe(freq, use_container_width=True)
+    st.dataframe(round_df(freq), use_container_width=True)
 
     st.subheader("Inequality Attribution Score (IAS)")
-    st.json(ias)
+    st.json(round_dict(ias))
 
     p1, p2 = st.columns(2)
     with p1:
@@ -152,8 +158,8 @@ def main() -> None:
                 st.exception(exc)
                 return
         st.write(f"Sampling method: `{sampling_method}`")
-        st.dataframe(bayes_summary, use_container_width=True)
-        st.json(bayes_ias)
+        st.dataframe(round_df(bayes_summary), use_container_width=True)
+        st.json(round_dict(bayes_ias))
 
         fig_path = Path("results/figures") / f"streamlit_{scenario}_{audit}_posterior.png"
         fig_path.parent.mkdir(parents=True, exist_ok=True)
