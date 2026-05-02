@@ -26,9 +26,10 @@ st.set_page_config(page_title="AI Fairness Audit Lab", layout="wide", page_icon=
 
 SCENARIO_LABELS = {
     "fair_algorithm": "Fair Algorithm",
-    "biased_algorithm": "Biased Algorithm",
-    "proxy_bias": "Proxy Bias",
+    "marginal_bias": "Biased Algorithm (Marginal Bias)",
     "intersectional_bias": "Intersectional Bias",
+    "proxy_feature_bias": "Proxy Feature Bias",
+    "differential_error_rate_bias": "Differential Error Rate Bias",
 }
 
 AUDIT_LABELS = {
