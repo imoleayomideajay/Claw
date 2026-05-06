@@ -34,7 +34,7 @@ def plot_fairness_gap(metrics: pd.DataFrame, title: str, output_path: Path) -> N
     fig, ax = plt.subplots(figsize=(8, 4.5))
     ax.axhline(0, color="black", linewidth=1)
     ax.bar(metrics["group"], metrics["raw_gap"], color="#1f77b4")
-    ax.set_xticklabels(metrics["group"], rotation=35, ha="right")
+    plt.setp(ax.get_xticklabels(), rotation=35, ha="right")
     ax.set_title(title)
     ax.set_ylabel("Observed - Expected")
     _save(fig, output_path)
@@ -65,7 +65,7 @@ def plot_ias_across_scenarios(ias_table: pd.DataFrame, output_path: Path) -> Non
     ax.set_ylim(0, 1)
     ax.set_ylabel("IAS")
     ax.set_title("IAS comparison across scenarios")
-    ax.set_xticklabels(ias_table["scenario"], rotation=25, ha="right")
+    plt.setp(ax.get_xticklabels(), rotation=25, ha="right")
     _save(fig, output_path)
 
 

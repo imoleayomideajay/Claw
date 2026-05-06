@@ -7,7 +7,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -82,27 +81,24 @@ def run_interactive_pipeline(
 
 
 def round_df(df: pd.DataFrame, decimals: int = 2) -> pd.DataFrame:
-    return df.round(decimals)
+    float_cols = df.select_dtypes(include="float").columns
+    result = df.copy()
+    result[float_cols] = result[float_cols].round(decimals)
+    return result
 
 
 def round_dict(d: dict, decimals: int = 2) -> dict:
     return {k: round(float(v), decimals) for k, v in d.items()}
 
 
-def fairness_verdict(ias_score: float) -> tuple[str, str, str]:
-    """Return (label, color, explanation) based on IAS score."""
+def fairness_verdict(ias_score: float) -> tuple[str, str]:
+    """Return (label, explanation) based on IAS score."""
     if ias_score < 0.05:
-        return "Likely Fair", "normal", "Identity-related factors (gender, race, disability) account for very little of the outcome variation. This looks fair."
+        return "Likely Fair", "Identity-related factors (gender, race, disability) account for very little of the outcome variation. This looks fair."
     elif ias_score < 0.15:
-        return "Borderline", "off", "Some outcome variation is tied to identity. Worth monitoring, but not a major red flag."
+        return "Borderline", "Some outcome variation is tied to identity. Worth monitoring, but not a major red flag."
     else:
-        return "Likely Unfair", "inverse", "A significant portion of outcomes appear driven by identity rather than merit. This warrants investigation."
-
-
-def gap_verdict(gap: float, threshold: float = 5.0) -> str:
-    if abs(gap) < threshold:
-        return "Within range"
-    return "Needs attention" if gap < 0 else "Above average"
+        return "Likely Unfair", "A significant portion of outcomes appear driven by identity rather than merit. This warrants investigation."
 
 
 def make_gap_chart(df: pd.DataFrame, x_col: str, y_col: str, title: str, x_label_map: dict | None = None) -> plt.Figure:
@@ -139,7 +135,7 @@ def make_gap_chart(df: pd.DataFrame, x_col: str, y_col: str, title: str, x_label
     return fig
 
 
-def render_sidebar() -> tuple[str, str, int, int, float, bool, bool]:
+def render_sidebar() -> tuple[str, str, int, int, float, bool, bool, bool]:
     with st.sidebar:
         st.image("https://img.icons8.com/fluency/96/scales.png", width=60)
         st.title("Audit Settings")
@@ -227,7 +223,7 @@ def render_welcome():
 
 
 def render_verdict_banner(ias_score: float, scenario: str, audit: str):
-    label, state, explanation = fairness_verdict(ias_score)
+    label, explanation = fairness_verdict(ias_score)
     colors = {
         "Likely Fair": ("#e8f5e9", "#2e7d32", "✅"),
         "Borderline": ("#fff8e1", "#f57f17", "⚠️"),
@@ -256,6 +252,10 @@ def render_verdict_banner(ias_score: float, scenario: str, audit: str):
 def render_ias_gauge(ias_score: float):
     pct = min(ias_score * 100, 100)
     color = "#2ca02c" if pct < 5 else ("#f0a500" if pct < 15 else "#d62728")
+    label_inside = pct >= 12
+    inner_label = f'<span style="color:white; font-size:0.8rem; font-weight:bold;">{pct:.1f}%</span>' if label_inside else ""
+    outer_label = f'<span style="font-size:0.8rem; font-weight:bold; color:{color}; margin-left:6px;">{pct:.1f}%</span>' if not label_inside else ""
+    bar_width = max(pct, 0.5)
     st.markdown(
         f"""
         <div style="margin-bottom:0.5rem;">
@@ -263,11 +263,14 @@ def render_ias_gauge(ias_score: float):
                 0% = Fully fair &nbsp;&nbsp;&nbsp; 100% = Fully identity-driven
             </span>
         </div>
-        <div style="background:#e0e0e0; border-radius:20px; height:22px; width:100%;">
-            <div style="width:{pct:.1f}%; background:{color}; height:22px; border-radius:20px;
-                 display:flex; align-items:center; justify-content:flex-end; padding-right:8px;">
-                <span style="color:white; font-size:0.8rem; font-weight:bold;">{pct:.1f}%</span>
+        <div style="display:flex; align-items:center;">
+            <div style="flex:1; background:#e0e0e0; border-radius:20px; height:22px;">
+                <div style="width:{bar_width:.1f}%; background:{color}; height:22px; border-radius:20px;
+                     display:flex; align-items:center; justify-content:flex-end; padding-right:8px;">
+                    {inner_label}
+                </div>
             </div>
+            {outer_label}
         </div>
         """,
         unsafe_allow_html=True,
