@@ -78,10 +78,10 @@ FRIENDLY_GROUP_NAMES = {
 }
 
 FRIENDLY_UNION_NAMES = {
-    "A\u222aB":       "Women or Minority Race",
-    "A\u222aC":       "Women or Disabled",
-    "B\u222aC":       "Minority Race or Disabled",
-    "A\u222aB\u222aC":"Any Protected Group",
+    "A\u222aB":        "Women or Minority Race",
+    "A\u222aC":        "Women or Disabled",
+    "B\u222aC":        "Minority Race or Disabled",
+    "A\u222aB\u222aC": "Any Protected Group",
 }
 
 # ── Global CSS ────────────────────────────────────────────────────────────────
@@ -100,7 +100,6 @@ html, body, [class*="css"], [class*="st-"] {
 footer    { visibility: hidden; }
 [data-testid="stDecoration"] { display: none; }
 
-/* ── Main area ── */
 .main .block-container {
     background: #f8fafc;
     padding-top: 1.5rem !important;
@@ -214,7 +213,7 @@ details summary {
     color: #475569 !important;
 }
 
-/* ── Alert / Info boxes ── */
+/* ── Alert boxes ── */
 [data-testid="stAlert"] {
     border-radius: 12px !important;
 }
@@ -405,13 +404,11 @@ def make_semicircle_gauge(score: float) -> plt.Figure:
     lw = 24
     theta_full = np.linspace(0.0, np.pi, 400)
 
-    # Background track
     ax.plot(
         np.cos(theta_full), np.sin(theta_full),
         color="#f1f5f9", linewidth=lw, solid_capstyle="round", zorder=1,
     )
 
-    # Zone colour hints (faint)
     zone_specs = [
         (0.00, 0.05, P["success"]),
         (0.05, 0.15, P["warning"]),
@@ -427,7 +424,6 @@ def make_semicircle_gauge(score: float) -> plt.Figure:
             solid_capstyle="butt", zorder=2,
         )
 
-    # Tick marks at 5% and 15%
     for pct in (0.05, 0.15):
         a = np.pi * (1.0 - pct)
         ax.plot(
@@ -437,11 +433,10 @@ def make_semicircle_gauge(score: float) -> plt.Figure:
         )
         ax.text(
             1.18 * np.cos(a), 1.18 * np.sin(a),
-            f"{int(pct*100)}%", ha="center", va="center",
+            f"{int(pct * 100)}%", ha="center", va="center",
             fontsize=7, color="#94a3b8",
         )
 
-    # Filled arc
     if score > 0.002:
         end_angle = np.pi * (1.0 - score)
         theta_fill = np.linspace(end_angle, np.pi, 400)
@@ -450,23 +445,16 @@ def make_semicircle_gauge(score: float) -> plt.Figure:
             color=fill_color, linewidth=lw, solid_capstyle="round", zorder=3,
         )
 
-    # Needle
     needle_angle = np.pi * (1.0 - score)
     ax.annotate(
         "",
         xy=(0.70 * np.cos(needle_angle), 0.70 * np.sin(needle_angle)),
         xytext=(0.0, 0.0),
-        arrowprops=dict(
-            arrowstyle="-|>",
-            color="#1e293b",
-            lw=2.2,
-            mutation_scale=14,
-        ),
+        arrowprops=dict(arrowstyle="-|>", color="#1e293b", lw=2.2, mutation_scale=14),
         zorder=5,
     )
     ax.scatter([0], [0], color="#1e293b", s=90, zorder=6)
 
-    # Score text
     ax.text(
         0, 0.15, f"{score * 100:.1f}%",
         ha="center", va="center",
@@ -480,10 +468,9 @@ def make_semicircle_gauge(score: float) -> plt.Figure:
         color="#64748b", zorder=7,
     )
 
-    # End labels
-    ax.text(-1.18, -0.05, "0%\nFair",    ha="center", fontsize=7.5, color="#94a3b8", linespacing=1.4)
+    ax.text(-1.18, -0.05, "0%\nFair",     ha="center", fontsize=7.5, color="#94a3b8", linespacing=1.4)
     ax.text( 1.18, -0.05, "100%\nBiased", ha="center", fontsize=7.5, color="#94a3b8", linespacing=1.4)
-    ax.text( 0,    1.25, "IAS Gauge", ha="center", fontsize=9, color="#94a3b8", fontweight="500")
+    ax.text( 0,    1.25,  "IAS Gauge",   ha="center", fontsize=9,   color="#94a3b8", fontweight="500")
 
     ax.set_xlim(-1.45, 1.45)
     ax.set_ylim(-0.28, 1.40)
@@ -493,7 +480,7 @@ def make_semicircle_gauge(score: float) -> plt.Figure:
 
 # ── HTML components ───────────────────────────────────────────────────────────
 
-def _card(icon: str, label: str, value: str, subtitle: str = "", accent: str = P["primary"]) -> str:
+def _card(icon: str, label: str, value: str, subtitle: str = "", accent: str = "#6366f1") -> str:
     sub_html = (
         f'<div style="font-size:0.79rem;color:#64748b;margin-top:0.15rem;">{subtitle}</div>'
         if subtitle else ""
@@ -743,7 +730,6 @@ def render_overview_tab(
 
     render_verdict_banner(ias_score, scenario, audit)
 
-    # ── IAS section ──
     st.markdown(
         _section_header(
             "Inequality Attribution Score (IAS)",
@@ -769,14 +755,13 @@ def render_overview_tab(
                 else P["success"]
             )
             st.markdown(
-                _card("🎯", "IAS Score", f"{ias_score:.2f}",
-                      "Closer to 0 = fairer", ias_accent),
+                _card("🎯", "IAS Score", f"{ias_score:.2f}", "Closer to 0 = fairer", ias_accent),
                 unsafe_allow_html=True,
             )
         with r1c2:
             st.markdown(
                 _card("👤", "Identity-driven variance", f"{ias['var_identity']:.2f}",
-                      "Explained by gender, race, disability", P["primary"]),
+                      "Gender, race, disability", P["primary"]),
                 unsafe_allow_html=True,
             )
         st.markdown("<div style='height:0.7rem'></div>", unsafe_allow_html=True)
@@ -784,11 +769,12 @@ def render_overview_tab(
         with r2c1:
             st.markdown(
                 _card("📈", "Merit-driven variance", f"{ias['var_merit']:.2f}",
-                      "Explained by education, experience, etc.", P["muted"]),
+                      "Education, experience, etc.", P["muted"]),
                 unsafe_allow_html=True,
             )
         with r2c2:
-            zone_html = """
+            st.markdown(
+                """
 <div style="background:#fff;border-radius:14px;padding:1.2rem 1.4rem;
      box-shadow:0 1px 6px rgba(0,0,0,0.06),0 0 0 1px rgba(0,0,0,0.03);height:100%;">
   <div style="font-size:0.72rem;font-weight:700;color:#94a3b8;text-transform:uppercase;
@@ -798,12 +784,12 @@ def render_overview_tab(
     <span style="color:#f59e0b;font-weight:700;">5 – 15%</span> — Borderline<br>
     <span style="color:#ef4444;font-weight:700;">&gt; 15%</span> — Likely Unfair
   </div>
-</div>"""
-            st.markdown(zone_html, unsafe_allow_html=True)
+</div>""",
+                unsafe_allow_html=True,
+            )
 
     _divider()
 
-    # ── Population snapshot ──
     st.markdown(
         _section_header(
             "Population Snapshot",
@@ -812,10 +798,10 @@ def render_overview_tab(
         unsafe_allow_html=True,
     )
     cc1, cc2, cc3, cc4 = st.columns(4)
-    pop_n = int(summary.loc[0, "n"])
-    y_rate = float(summary.loc[0, "y_rate"])
-    yhat_rate = float(summary.loc[0, "y_hat_rate"])
-    fp_rate = float(summary.loc[0, "false_positive_rate"])
+    pop_n    = int(summary.loc[0, "n"])
+    y_rate   = float(summary.loc[0, "y_rate"])
+    yhat_rate= float(summary.loc[0, "y_hat_rate"])
+    fp_rate  = float(summary.loc[0, "false_positive_rate"])
 
     with cc1:
         st.markdown(_card("👥", "People simulated", f"{pop_n:,}", "Total population", P["primary"]), unsafe_allow_html=True)
@@ -844,7 +830,7 @@ def render_groups_tab(
         _section_header(
             "Group Fairness Analysis",
             "The <strong>fairness gap</strong> shows how many more or fewer positive outcomes each group received "
-            "compared to what they were expected to receive based on their qualifications alone. "
+            "compared to what was expected based on qualifications alone. "
             "<span style='color:#10b981;font-weight:600;'>Green = above expected</span> &nbsp;&middot;&nbsp; "
             "<span style='color:#ef4444;font-weight:600;'>Red = below expected</span> &nbsp;&middot;&nbsp; "
             "Near zero = treated fairly.",
@@ -1008,7 +994,7 @@ def render_technical_tab(
         fig_path = Path("results/figures") / f"streamlit_posterior_{audit}.png"
         fig_path.parent.mkdir(parents=True, exist_ok=True)
         az.plot_forest(idata, var_names=["intercept", "beta"], combined=True, hdi_prob=0.95)
-        plt.title("Bayesian posterior — factor estimates with 95% uncertainty range")
+        plt.title("Bayesian posterior \u2014 factor estimates with 95% uncertainty range")
         plt.tight_layout()
         plt.savefig(fig_path, dpi=300)
         plt.close()
