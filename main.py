@@ -16,7 +16,6 @@ from src.frequentist_model import fit_frequentist_fairness_model
 from src.ias import compute_bayesian_ias_interval, compute_ias
 from src.inclusion_exclusion import compute_union_metrics_pie
 from src.simulate_data import build_audit_outcome, simulate_algorithm, simulate_ground_truth, simulate_population
-from src.utils import SCENARIO_ORDER
 
 
 HAS_BAYES_STACK = find_spec("pymc") is not None and find_spec("arviz") is not None
